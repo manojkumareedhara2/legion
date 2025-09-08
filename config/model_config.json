@@ -1,0 +1,4 @@
+{
+    "task": "calssification",
+    "model_name": "google/vit-base-patch16-224"
+}

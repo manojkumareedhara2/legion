@@ -1,0 +1,6 @@
+# Example .gitignore
+Legion_env/
+__pycache__/
+*.pyc
+*.pkl
+*.pt

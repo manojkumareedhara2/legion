@@ -1,0 +1,23 @@
+# Core dependencies
+opencv-python
+torch
+torchvision
+torchaudio
+onnxruntime
+
+# Backend + API
+fastapi
+uvicorn
+
+# Optional UI
+streamlit
+
+# Utilities
+requests
+numpy
+
+
+# models
+huggingface_hub
+yolov5
+yolov8
