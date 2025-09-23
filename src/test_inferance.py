@@ -7,6 +7,8 @@ from typing import Union, Dict, Any
 import json
 from pathlib import Path
 import os
+import threading
+from queue import Queue
 
 # Import your model classes
 from Utils import ImageUtils
@@ -65,6 +67,108 @@ current_model_name = "YOLOv8n"
 current_model_path = "yolov8n.pt"
 
 
+# Improved stream handling
+class StreamManager:
+    def __init__(self):
+        self.cap = None
+        self.current_stream_url = ""
+        self.frame_queue = Queue(maxsize=2)
+        self.stop_event = threading.Event()
+        self.read_thread = None
+
+    def connect_stream(self, stream_url):
+        """Connect to a video stream with robust error handling"""
+        if self.cap is not None:
+            self.cap.release()
+
+        # Try different backends for better compatibility
+        backends = [
+            cv2.CAP_FFMPEG,  # Prefer FFmpeg for streaming
+            cv2.CAP_ANY,  # Fallback to any available
+        ]
+
+        for backend in backends:
+            try:
+                self.cap = cv2.VideoCapture(stream_url, backend)
+                if self.cap.isOpened():
+                    # Set buffer size to minimize latency
+                    self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+                    # Set lower resolution for better performance
+                    self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+                    self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+                    self.current_stream_url = stream_url
+                    print(f"Successfully opened stream with backend {backend}")
+                    return True
+            except Exception as e:
+                print(f"Failed with backend {backend}: {e}")
+                continue
+
+        print(f"Error: Could not open video stream: {stream_url}")
+        return False
+
+    def start_stream_reader(self):
+        """Start a background thread to read frames"""
+        self.stop_event.clear()
+        self.read_thread = threading.Thread(
+            target=self._stream_reader_thread, daemon=True
+        )
+        self.read_thread.start()
+
+    def _stream_reader_thread(self):
+        """Background thread to continuously read frames"""
+        while not self.stop_event.is_set():
+            if self.cap is None or not self.cap.isOpened():
+                time.sleep(1)
+                continue
+
+            ret, frame = self.cap.read()
+
+            if not ret:
+                print("Failed to grab frame, attempting to reconnect...")
+                time.sleep(1)  # Wait before reconnecting
+                if not self.connect_stream(self.current_stream_url):
+                    time.sleep(2)  # Wait longer if connection failed
+                    continue
+                else:
+                    continue
+
+            # Keep only the latest frame
+            while self.frame_queue.full():
+                try:
+                    self.frame_queue.get_nowait()
+                except:
+                    pass
+
+            self.frame_queue.put(frame)
+            time.sleep(0.01)  # Small delay to prevent CPU overload
+
+    def get_latest_frame(self):
+        """Get the latest frame from the queue"""
+        try:
+            return self.frame_queue.get_nowait()
+        except:
+            return None
+
+    def stop(self):
+        """Stop the stream reader and release resources"""
+        self.stop_event.set()
+        if self.read_thread and self.read_thread.is_alive():
+            self.read_thread.join(timeout=1.0)
+        if self.cap:
+            self.cap.release()
+        self.cap = None
+        self.current_stream_url = ""
+        while not self.frame_queue.empty():
+            try:
+                self.frame_queue.get_nowait()
+            except:
+                pass
+
+
+# Initialize the stream manager
+stream_manager = StreamManager()
+
+
 # Preload default models for faster switching
 def preload_models():
     print("Preloading default models...")
@@ -99,7 +203,6 @@ def preload_models():
 preload_models()
 
 # Video capture objects for stream handling
-stream_capture = None
 current_stream_url = ""
 is_streaming = False  # Flag to control stream processing
 
@@ -135,41 +238,23 @@ def get_model_path(model_type, model_name):
 
 
 def get_frame_from_stream(stream_url):
-    """Get a frame from a video stream URL"""
-    global stream_capture, current_stream_url
+    """Get a frame from a video stream URL using the stream manager"""
+    global current_stream_url
 
     if not stream_url:
         return None
 
     # Initialize or reinitialize the capture if URL changed
-    if stream_capture is None or stream_url != current_stream_url:
-        if stream_capture is not None:
-            stream_capture.release()
-
-        try:
-            stream_capture = cv2.VideoCapture(stream_url)
+    if stream_url != current_stream_url:
+        if stream_manager.connect_stream(stream_url):
             current_stream_url = stream_url
-            if not stream_capture.isOpened():
-                print(f"Failed to open stream: {stream_url}")
-                return None
-        except Exception as e:
-            print(f"Error opening stream: {e}")
+            stream_manager.start_stream_reader()
+            # Allow time for the stream to initialize
+            time.sleep(2)
+        else:
             return None
 
-    # Read a frame from the stream
-    try:
-        ret, frame = stream_capture.read()
-        if ret:
-            return frame
-        else:
-            # Try to reopen the stream if reading failed
-            stream_capture.release()
-            stream_capture = cv2.VideoCapture(stream_url)
-            ret, frame = stream_capture.read()
-            return frame if ret else None
-    except Exception as e:
-        print(f"Error reading from stream: {e}")
-        return None
+    return stream_manager.get_latest_frame()
 
 
 # Inference function with proper model switching
@@ -252,10 +337,8 @@ def process_frame(
 
 # Function to stop processing and reset
 def stop_processing():
-    global stream_capture, current_stream_url, is_streaming
-    if stream_capture is not None:
-        stream_capture.release()
-        stream_capture = None
+    global current_stream_url, is_streaming
+    stream_manager.stop()
     current_stream_url = ""
     is_streaming = False
     return None, "Stream stopped and resources released", "0.0"
@@ -493,7 +576,21 @@ with gr.Blocks() as demo:
             # Get frame from stream
             frame = get_frame_from_stream(stream_url)
             if frame is None:
-                break
+                # Show a waiting message
+                waiting_frame = np.zeros((480, 640, 3), dtype=np.uint8)
+                cv2.putText(
+                    waiting_frame,
+                    "Connecting to stream...",
+                    (50, 240),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    1,
+                    (255, 255, 255),
+                    2,
+                )
+                waiting_frame = cv2.cvtColor(waiting_frame, cv2.COLOR_BGR2RGB)
+                yield waiting_frame, "Connecting to stream...", "0.0"
+                time.sleep(1)
+                continue
 
             start_time = time.time()
             processed_frame, text_result = process_frame(
