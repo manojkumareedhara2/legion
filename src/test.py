@@ -87,7 +87,7 @@ class DroneInference:
 
 
 if __name__ == "__main__":
-    stream_url = "http://192.168.0.23/video_raw/tracking_front"
+    stream_url = "http://192.168.0.23/video_raw/hires_small_color"
 
     # Initialize the drone inference
     # drone_inference = DroneInference(
@@ -99,7 +99,7 @@ if __name__ == "__main__":
     drone_inference = DroneInference(
         stream_url=stream_url,
         model_type="yolo",
-        model_path="M:/Autonome Labs/Legion/Models/fire_smoke.pt",  # M:/Autonome Labs/Legion/Models/fire_smoke.pt",
+        model_path="M:/Autonome Labs/Legion/Models/yolov",  # M:/Autonome Labs/Legion/Models/fire_smoke.pt",
     )
 
     # Connect to the stream

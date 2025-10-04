@@ -20,7 +20,7 @@ from YOLOModel import (
 
 
 if __name__ == "__main__":
-    # stream_url = "http://192.168.0.23/video_raw/tracking_front"
+    # stream_url = "http://192.168.0.23/video_raw/hires_small_color"
     video_source = 0  # "M:\Autonome Labs\Legion\data\yt1z.net - California wildfires Aerial view of Palisades fire (1080p).mp4"
     model = ModelFactory.create_model("yolov5", "M:/Autonome Labs/Legion/Models/rsp.pt")
     # add detection for hugging face #
