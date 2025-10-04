@@ -170,9 +170,9 @@ def preload_fastest_models():
         try:
             success = model_manager.load_model(model_type, model_path, **kwargs)
             if success:
-                print(f"✓ Successfully preloaded {model_path}")
+                print(f"Successfully preloaded {model_path}")
             else:
-                print(f"✗ Failed to preload {model_path}")
+                print(f"Failed to preload {model_path}")
         except Exception as e:
             print(f"Error preloading {model_path}: {e}")
 
@@ -407,7 +407,7 @@ def process_webcam_optimized(
 # Create optimized Gradio interface
 with gr.Blocks(title="High-Performance AI Inference", theme=gr.themes.Soft()) as demo:
     gr.Markdown("""
-    # 🚀 High-Performance Real-time AI Model Inference
+    # High-Performance Real-time AI Model Inference
     **Optimized for speed and accuracy** with GPU acceleration and model optimizations
     """)
 
@@ -423,12 +423,12 @@ with gr.Blocks(title="High-Performance AI Inference", theme=gr.themes.Soft()) as
         model_type_selector = gr.Dropdown(
             choices=list(OPTIMIZED_MODEL_TYPES.keys()),
             value="yolo",
-            label="🎯 Model Type",
+            label="Model Type",
         )
         model_selector = gr.Dropdown(
             choices=get_available_models("yolo"),
             value="YOLOv8n (Fastest)",
-            label="🤖 Select Model",
+            label="Select Model",
             info="Smaller models = Faster inference",
         )
 
@@ -447,9 +447,9 @@ with gr.Blocks(title="High-Performance AI Inference", theme=gr.themes.Soft()) as
                 interactive=False,
             )
         with gr.Column(scale=1):
-            test_stream_btn = gr.Button("🔍 Test Connection", size="sm")
-            start_stream_btn = gr.Button("🎬 Start Stream", variant="primary")
-            stop_stream_btn = gr.Button("⏹️ Stop Stream", variant="stop")
+            test_stream_btn = gr.Button("Test Connection", size="sm")
+            start_stream_btn = gr.Button("Start Stream", variant="primary")
+            stop_stream_btn = gr.Button("Stop Stream", variant="stop")
 
     # Performance tuning section
     with gr.Accordion("⚡ Performance Settings", open=True):
@@ -484,25 +484,25 @@ with gr.Blocks(title="High-Performance AI Inference", theme=gr.themes.Soft()) as
         webcam_input = gr.Image(
             sources=["webcam"],
             streaming=True,
-            label="📷 Live Camera Input",
+            label="Live Camera Input",
             height=400,
             visible=True,
         )
 
-        output_image = gr.Image(label="🎯 Processed Output", streaming=True, height=400)
+        output_image = gr.Image(label="Processed Output", streaming=True, height=400)
 
     # Results and metrics
     with gr.Row():
         text_output = gr.Textbox(
-            label="📊 Detection Results", interactive=False, max_lines=3
+            label="Detection Results", interactive=False, max_lines=3
         )
         fps_display = gr.Textbox(
-            label="⚡ Performance", value="Ready...", interactive=False
+            label="Performance", value="Ready...", interactive=False
         )
 
     # Model information
     model_info = gr.Textbox(
-        label="ℹ️ Model Info",
+        label="Model Info",
         value="Using YOLOv8n (Fastest) - Optimized for speed",
         interactive=False,
     )
@@ -538,9 +538,9 @@ with gr.Blocks(title="High-Performance AI Inference", theme=gr.themes.Soft()) as
     def on_model_change(model_type, model_name):
         info_text = f"Active: {model_name}"
         if "Fastest" in model_name:
-            info_text += " ⚡ (Optimized for speed)"
+            info_text += " (Optimized for speed)"
         elif "Better" in model_name:
-            info_text += " 🎯 (Optimized for accuracy)"
+            info_text += " (Optimized for accuracy)"
         return info_text
 
     # Connect events
@@ -602,16 +602,6 @@ with gr.Blocks(title="High-Performance AI Inference", theme=gr.themes.Soft()) as
 if __name__ == "__main__":
     # Create models directory
     os.makedirs("./models", exist_ok=True)
-
-    print("\n" + "=" * 60)
-    print("🚀 HIGH-PERFORMANCE AI INFERENCE SYSTEM")
-    print("=" * 60)
-    print("Stream URL Support:")
-    print("✓ RTSP streams (rtsp://...)")
-    print("✓ HTTP streams (http://...)")
-    print("✓ Video files (.mp4, .avi, etc.)")
-    print("✓ Test connection before processing")
-    print("=" * 60)
-    print("\nStarting server...")
+    print(f'Inferance is started...')
 
     demo.launch(server_port=7860, share=False, show_error=True)
